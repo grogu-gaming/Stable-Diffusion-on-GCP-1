@@ -27,11 +27,13 @@ print(lookup_res)
 if lookup_res == ngx.null then                
     local http = require "resty.http"
     local httpc = http.new()
+    local sub_key = string.gsub(key, ":", ".")
+    local final_uid = string.gsub(sub_key, "@", ".")
     local res, err = httpc:request_uri(
         "http://agones-allocator.agones-system.svc.cluster.local:443/gameserverallocation",
             {
             method = "POST",
-            body = [[{"namespace": "default"}]],
+            body = [[{"namespace": "default", "metadata": {"labels": {"user": "]] .. final_uid .. [["}}}]],
           }
     )
 
