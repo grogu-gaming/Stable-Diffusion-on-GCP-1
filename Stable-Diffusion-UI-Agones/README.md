@@ -70,7 +70,7 @@ gcloud auth configure-docker ${REGION}-docker.pkg.dev
 Build image with provided Dockerfile, push to repo in Cloud Artifacts
 
 ```
-cd gcp-stable-diffusion-build-deploy/Stable-Diffusion-UI-Novel
+cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/sd-webui
 docker build . -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1
 docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-webui:0.1
 
@@ -90,6 +90,11 @@ gcloud filestore instances create ${FILESTORE_NAME} --zone=${FILESTORE_ZONE} --t
 gcloud filestore instances create nfs-store --zone=us-central1-b --tier=BASIC_HDD --file-share=name="vol1",capacity=1TB --network=name=${VPC_NETWORK}
 
 ```
+Deploy the PV and PVC resource, replace the nfs-server-ip using the nfs instance's ip address that created before in the file nfs_pv.yaml.
+```
+kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/nfs_pv.yaml
+kubectl apply -f ./Stable-Diffusion-UI-Agones/agones/nfs_pvc.yaml
+```
 
 ### Install Agones
 Install the Agones operator on default-pool, the default pool is long-run node pool that host the Agones Operator.
@@ -97,6 +102,8 @@ Note: for quick start, you can using the cloud shell which has helm installed al
 ```
 helm repo add agones https://agones.dev/chart/stable
 helm repo update
+kubectl create namespace agones-system
+cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones
 helm install sd-agones-release --namespace agones-system -f ./agones/values.yaml agones/agones
 ```
 
@@ -115,7 +122,7 @@ gcloud redis instances describe sd-agones-cache --region ${REGION} --format=json
 Build image with provided Dockerfile, push to repo in Cloud Artifacts. Please replace ${REDIS_HOST} in the gcp-stable-diffusion-build-deploy/Stable-Diffusion-UI-Agones/nginx/sd.lua line 15 with the ip address record in previous step.
 
 ```
-cd gcp-stable-diffusion-build-deploy/Stable-Diffusion-UI-Agones/nginx
+cd Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx
 docker build . -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1
 docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1
 ```
@@ -123,9 +130,9 @@ docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${BUILD_REGIST}/sd-nginx:0.1
 ### Deploy stable-diffusion agones deployment
 Deploy stable-diffusion agones deployment, please replace the image URL in the deployment.yaml and fleet yaml with the image built before.
 ```
-kubectl apply -f ./gcp-stable-diffusion-build-deploy/Stable-Diffusion-UI-Agones/nginx/deployment.yaml
-kubectl apply -f ./gcp-stable-diffusion-build-deploy/Stable-Diffusion-UI-Agones/agones/fleet.yaml
-kubectl apply -f ./gcp-stable-diffusion-build-deploy/Stable-Diffusion-UI-Agones/agones/fleet_autoscale.yaml
+kubectl apply -f ./Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/nginx/deployment.yaml
+kubectl apply -f ./Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones/fleet_pvc.yaml
+kubectl apply -f ./Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/agones/fleet_autoscale.yaml
 ```
 
 ### Prepare Cloud Function Serverless VPC Access
@@ -137,7 +144,7 @@ gcloud compute networks vpc-access connectors create sd-agones-connector --netwo
 ### Deploy Cloud Function Cruiser Program
 This Cloud Function work as Cruiser to monitor the idle user, by default when the user is idle for 15mins, the stable-diffusion runtime will be collected back. Please replace ${REDIS_HOST} with the redis instance ip address that record in previous step. To custom the idle timeout default setting, please overwrite setting by setting the variable TIME_INTERVAL.
 ```
-cd ./gcp-stable-diffusion-build-deploy/Stable-Diffusion-UI-Agones/cloud-function
+cd ./Stable-Diffusion-on-GCP/Stable-Diffusion-UI-Agones/cloud-function
 gcloud functions deploy redis_http --runtime python310 --trigger-http --allow-unauthenticated --region=${REGION} --vpc-connector=sd-agones-connector --egress-settings=private-ranges-only --set-env-vars=REDIS_HOST=${REDIS_HOST}
 ```
 Record the Function trigger url.
@@ -177,3 +184,6 @@ kubectl apply -f ./ingress-iap/ingress.yaml
 ```
 
 Give the authorized users required priviledge to access the service. [Guide](https://cloud.google.com/iap/docs/enabling-kubernetes-howto#iap-access)
+
+
+### FAQ

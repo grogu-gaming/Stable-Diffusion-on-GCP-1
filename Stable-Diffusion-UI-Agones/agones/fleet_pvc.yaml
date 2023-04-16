@@ -43,6 +43,7 @@ spec:
                 cpu: "20m"
           - name: stable-diffusion-webui
             image: us-central1-docker.pkg.dev/<PROJECT_ID>/<BUILD_REGIST>/sd-webui:0.1
+            command: ["/bin/sh", "start.sh"]
             volumeMounts:
             - name: stable-diffusion-storage
               mountPath: /result
