@@ -4,6 +4,7 @@ metadata:
   name: config-default
   namespace: default
 spec:
+  timeoutSec: 900
   iap:
     enabled: true
     oauthclientCredentials:
